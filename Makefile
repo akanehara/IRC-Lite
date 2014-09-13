@@ -14,7 +14,7 @@ ERL = erl -boot start_clean
 # を置いて次の行に続ける
 
 # 以下の行を編集すること
-MODS = io_widget chat_client \
+MODS = io_widget_wx io_widget chat_client \
        mod_chat_controller chat_group chat_server
 
 # Makefileの最初のターゲットがデフォルトのターゲットになる
