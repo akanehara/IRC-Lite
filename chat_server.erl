@@ -29,10 +29,11 @@ start_server() ->
 			   io:format("Server terminated with:~p~n",[Val])
 		   end)).
 
-
-
 server_loop(L) ->
     receive
+        %% グループへの接続要求
+        %% グループが既存ならメンバーを追加し、
+        %% そうでなければグループを作る
 	{mm, Channel, {login, Group, Nick}} ->
 	    case lookup(Group, L) of
 		{ok, Pid} ->
@@ -44,8 +45,10 @@ server_loop(L) ->
 				     end),
 		    server_loop([{Group,Pid}|L])
 	    end;
+        %% 仲介プロセスからの切断通知？
 	{mm_closed, _} ->
 	    server_loop(L); 
+        %% グループからすべてのメンバーが退室し、終了した
 	{'EXIT', Pid, allGone} ->
 	    L1 = remove_group(Pid, L),
 	    server_loop(L1);
@@ -56,11 +59,12 @@ server_loop(L) ->
     end.
 
 
-
+%% グループ -> プロセスID のルックアップ
 lookup(G, [{G,Pid}|_]) -> {ok, Pid};
 lookup(G, [_|T])       -> lookup(G, T);
 lookup(_,[])           -> error.
 
+%% Pidをキーにルックアプからグループを削除する操作
 remove_group(Pid, [{G,Pid}|T]) -> io:format("~p removed~n",[G]), T;
 remove_group(Pid, [H|T])       -> [H|remove_group(Pid, T)];
 remove_group(_, [])            -> [].
