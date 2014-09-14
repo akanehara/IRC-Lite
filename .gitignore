@@ -1,5 +1,6 @@
+!.gitignore
 .DS_Store
 *.beam
 *.dump
 *.swp
-!.gitignore
+.idea
