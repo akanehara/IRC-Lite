@@ -17,6 +17,7 @@
 
 -export([start/0, test/0, connect/5]).
 
+-include("chat.hrl").
 
 start() -> 
     connect("localhost", 2223, "AsDT67aQ", "general", "joe").
@@ -36,7 +37,7 @@ handler(Host, Port, HostPsw, Group, Nick) ->
     process_flag(trap_exit, true),
     Widget = io_widget_wx:start(self()),
     set_title(Widget, Nick),
-    set_state(Widget, Nick),
+    set_state(Widget, #widget_state{nickname = Nick, members = []}),
     set_prompt(Widget, [Nick, " > "]),
     set_handler(Widget, fun parse_command/1),
     start_connector(Host, Port, HostPsw),    
@@ -81,6 +82,10 @@ active(Widget, MM) ->
 	 {chan, MM, {msg, From, Pid, Str}} ->
 	     insert_str(Widget, [From,"@",pid_to_list(Pid)," ", Str, "\n"]),
 	     active(Widget, MM);
+     {chan, MM, {updateMember, Members}} ->
+         io:format("client - updateMember~n"),
+         update_state(Widget, #widget_state.members, Members),
+         active(Widget, MM);
 	 {'EXIT',Widget,windowDestroyed} ->
 	     lib_chan_mm:close(MM);
 	 {close, MM} ->

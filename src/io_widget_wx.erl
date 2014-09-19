@@ -20,6 +20,8 @@
 %% 外部インターフェース
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+-include("chat.hrl").
+
 %% GUI起動
 start(Pid) ->
     spawn_link(fun() -> widget(Pid) end).
@@ -53,6 +55,7 @@ update_state(Pid, N, X) -> Pid ! {updateState, N, X}.
 -define(FRAME, 0).
 -define(INPUT_TEXT, 1).
 -define(OUTPUT_TEXT, 2).
+-define(MEMBER_LIST, 3).
 
 %% RPCヘルパー
 rpc(Pid, Q) ->    
@@ -92,23 +95,34 @@ widget(Pid) ->
     % wxTextCtrl:connect(InputText, char, [{callback, OnChar}]),
     wxFrame:connect(F, close_window, [{skip, true}]),
 
+    % メンバーリスト
+    MemberListBox = wxListBox:new(Panel, ?MEMBER_LIST, [{choices, []}]),
+
     %% Sizer
-    MainSizer = wxBoxSizer:new(?wxVERTICAL),
+    MainSizer = wxBoxSizer:new(?wxHORIZONTAL),
+
+    %% チャットエリア
+    ChatSizer = wxBoxSizer:new(?wxVERTICAL),
     OutputSizer = wxStaticBoxSizer:new(?wxVERTICAL, Panel, [{label, "Output"}]),
     InputSizer = wxStaticBoxSizer:new(?wxVERTICAL, Panel, [{label, "Say"}]),
-
     wxSizer:add(InputSizer,  InputText,  [{flag, ?wxEXPAND}]),
     wxSizer:add(OutputSizer, OutputText, [{flag, ?wxEXPAND}, {proportion, 1}]),
+    wxSizer:add(ChatSizer, OutputSizer, [{flag, ?wxEXPAND}, {proportion, 1}]),
+    wxSizer:addSpacer(ChatSizer, 10), % Spacer
+    wxSizer:add(ChatSizer, InputSizer,  [{flag, ?wxEXPAND}]),
 
-    wxSizer:add(MainSizer, OutputSizer, [{flag, ?wxEXPAND}, {proportion, 1}]),
-    wxSizer:addSpacer(MainSizer, 10), % Spacer
-    wxSizer:add(MainSizer, InputSizer,  [{flag, ?wxEXPAND}]),
+    %% メンバーリスト
+    MemberListSizer = wxStaticBoxSizer:new(?wxHORIZONTAL, Panel, [{label, "Members"}]),
+    wxSizer:add(MemberListSizer, MemberListBox, [{flag, ?wxEXPAND}]),
+
+    wxSizer:add(MainSizer, ChatSizer, [{flag, ?wxEXPAND}, {proportion, 1}]),
+    wxSizer:add(MainSizer, MemberListSizer, [{flag, ?wxEXPAND}]),
 
     wxPanel:setSizer(Panel, MainSizer),
 
     wxFrame:show(F), % ウィンドウ表示
 
-    State = nil,
+    State = #widget_state{ nickname = undefined, members = [] },
 
     Prompt = " > ",
 
@@ -148,26 +162,28 @@ loop(F, Pid, Prompt, State, Parse) ->
 	{insert, Str} ->
             T = wx:typeCast(wxTextCtrl:findWindow(F, ?OUTPUT_TEXT), wxTextCtrl),
             wxTextCtrl:appendText(T, Str),
-	    scroll_to_show_last_line(F),
-	    loop(F, Pid, Prompt, State, Parse);
-	{updateState, N, X} ->
-	    io:format("setelemtn N=~p X=~p Satte=~p~n",[N,X,State]),
-	    State1 = setelement(N, State, X), % タプルStateのN番目をXに
-	    loop(F, Pid, Prompt, State1, Parse);
+        scroll_to_show_last_line(F),
+        loop(F, Pid, Prompt, State, Parse);
+    {updateState, N, X} ->
+        %io:format("setelemtn N=~p X=~p Satte=~p~n",[N,X,State]),
+        State1 = setelement(N, State, X), % タプルStateのN番目をXに
+        MemberListBox = wx:typeCast(wxWindow:findWindow(F, ?MEMBER_LIST), wxListBox),
+        wxListBox:set(MemberListBox, State1#widget_state.members),
+        loop(F, Pid, Prompt, State1, Parse);
         #wx{id = ?INPUT_TEXT, event = #wxKey{ keyCode = ?WXK_RETURN }} ->
             T = wx:typeCast(wxTextCtrl:findWindow(F, ?INPUT_TEXT), wxTextCtrl),
             Text = wxTextCtrl:getValue(T),
             wxTextCtrl:setValue(T, Prompt),
             wxTextCtrl:setInsertionPointEnd(T),
-	    % io:format("Read:~tp~n",[Text]),
-	    try Parse(Text) of
-	       Term ->
-	           Pid ! {self(), State, Term}
-	    catch
-	       _:_ ->
-	           self() ! {insert, "** bad input**\n** /h for help\n"}
-	    end,
-	    loop(F, Pid, Prompt, State, Parse);
+        % io:format("Read:~tp~n",[Text]),
+        try Parse(Text) of
+           Term ->
+               Pid ! {self(), State#widget_state.nickname, Term}
+        catch
+           _:_ ->
+               self() ! {insert, "** bad input**\n** /h for help\n"}
+        end,
+        loop(F, Pid, Prompt, State, Parse);
         #wx{id = ?INPUT_TEXT} ->
 	    loop(F, Pid, Prompt, State, Parse);
         #wx{id = Id, event = #wxClose{type = close_window}} ->
