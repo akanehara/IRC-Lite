@@ -150,18 +150,18 @@ loop(F, Pid, Prompt, State, Parse) ->
 	{handler, Fun} ->
 	    loop(F, Pid, Prompt, State, Fun);
 	{prompt, Str} ->
-            T = wx:typeCast(wxTextCtrl:findWindow(F, ?INPUT_TEXT), wxTextCtrl),
-            wxTextCtrl:setValue(T, Str),
-            wxTextCtrl:setInsertionPointEnd(T),
+        T = wx:typeCast(wxTextCtrl:findWindow(F, ?INPUT_TEXT), wxTextCtrl),
+        wxTextCtrl:setValue(T, Str),
+        wxTextCtrl:setInsertionPointEnd(T),
 	    loop(F, Pid, Str, State, Parse);
 	{state, S} ->
 	    loop(F, Pid, Prompt, S, Parse);
 	{title, Str} ->
-            wxFrame:setTitle(F, Str),
+        wxFrame:setTitle(F, Str),
 	    loop(F, Pid, Prompt, State, Parse);
 	{insert, Str} ->
-            T = wx:typeCast(wxTextCtrl:findWindow(F, ?OUTPUT_TEXT), wxTextCtrl),
-            wxTextCtrl:appendText(T, Str),
+        T = wx:typeCast(wxTextCtrl:findWindow(F, ?OUTPUT_TEXT), wxTextCtrl),
+        wxTextCtrl:appendText(T, Str),
         scroll_to_show_last_line(F),
         loop(F, Pid, Prompt, State, Parse);
     {updateState, N, X} ->
@@ -170,11 +170,11 @@ loop(F, Pid, Prompt, State, Parse) ->
         MemberListBox = wx:typeCast(wxWindow:findWindow(F, ?MEMBER_LIST), wxListBox),
         wxListBox:set(MemberListBox, State1#widget_state.members),
         loop(F, Pid, Prompt, State1, Parse);
-        #wx{id = ?INPUT_TEXT, event = #wxKey{ keyCode = ?WXK_RETURN }} ->
-            T = wx:typeCast(wxTextCtrl:findWindow(F, ?INPUT_TEXT), wxTextCtrl),
-            Text = wxTextCtrl:getValue(T),
-            wxTextCtrl:setValue(T, Prompt),
-            wxTextCtrl:setInsertionPointEnd(T),
+    #wx{id = ?INPUT_TEXT, event = #wxKey{ keyCode = ?WXK_RETURN }} ->
+        T = wx:typeCast(wxTextCtrl:findWindow(F, ?INPUT_TEXT), wxTextCtrl),
+        Text = wxTextCtrl:getValue(T),
+        wxTextCtrl:setValue(T, Prompt),
+        wxTextCtrl:setInsertionPointEnd(T),
         % io:format("Read:~tp~n",[Text]),
         try Parse(Text) of
            Term ->
