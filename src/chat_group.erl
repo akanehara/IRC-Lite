@@ -38,14 +38,22 @@ group_controller(L) ->
 	{chan, C, {relay, Nick, Str}} ->
 	    foreach(fun({Pid,_}) -> send(Pid, {msg,Nick,C,Str}) end, L),
 	    group_controller(L);
+    {chan, C, {updateMember}} ->
+        io:format("group updateMember ~n"),
+        Nicks = lists:map(fun({Pid, Nick}) -> Nick end, L),
+        foreach(fun({Pid,_}) -> send(Pid, {updateMember, Nicks}) end, L),
+        group_controller(L);
 	{login, C, Nick} ->
 	    controller(C, self()),
 	    send(C, ack),
 	    self() ! {chan, C, {relay, Nick, "I'm joining the group"}},
+        self() ! {chan, C, {updateMember}},
 	    group_controller([{C,Nick}|L]);
 	{chan_closed, C} ->
 	    {Nick, L1} = delete(C, L, []),
+        io:format("group - chan_closed ~n"),
 	    self() ! {chan, C, {relay, Nick, "I'm leaving the group"}},
+        self() ! {chan, C, {updateMember}},
 	    group_controller(L1);
 	Any ->
 	    io:format("group controller received Msg=~p~n", [Any]),

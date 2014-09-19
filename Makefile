@@ -1,4 +1,4 @@
-all: clean compile
+all: compile
 
 ERL = erl
 
@@ -17,3 +17,5 @@ chat_client: compile
 chat_server: compile
 	${ERL} -pa './ebin' -pa './lib_chan/ebin' -s chat_server start
 
+test_widget: compile
+	${ERL} -pa './ebin' -s io_widget_wx test
